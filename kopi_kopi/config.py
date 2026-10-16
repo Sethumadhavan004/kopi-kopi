@@ -1,15 +1,39 @@
 """Settings you might want to tweak. Everything else reads from here."""
 
-# Cursor colour while kopi-kopi is ON (R, G, B).
-# A deeper take on Claude Code's blue, so it stands out on any background.
-# (87, 105, 247) is closer to the original but reads lighter.
-KOPI_BLUE = (52, 78, 240)
+# Colours from the HIKARI design system (Sethumadhavan N).
+HIKARI_INK = (0x2B, 0x12, 0x15)     # warm near-black
+HIKARI_PINK = (0xF6, 0xB9, 0xC4)    # Sakura, "the companion"
+HIKARI_YELLOW = (0xF9, 0xE7, 0x9F)  # Yuzu, "the spark"
+HIKARI_GREEN = (0xBF, 0xE6, 0xCB)   # Matcha, "the calm"
+WHITE = (0xFF, 0xFF, 0xFF)
+
+# Galaxy colours for the pointer: a bright core fading to blue arms and a magenta ring.
+GALAXY_CORE = (0xDC, 0xE6, 0xFF)    # white-blue, the bright centre
+GALAXY_BLUE = (0x46, 0x6E, 0xFF)    # electric blue
+GALAXY_INDIGO = (0x26, 0x1C, 0x7A)  # deep space
+GALAXY_MAGENTA = (0xEC, 0x52, 0xD6) # the neon outer ring
+GALAXY_VIOLET = (0xAA, 0x5A, 0xFF)  # the soft nebula glow
+
+# The pointer: a galaxy gradient from tip to tail, a magenta rim and a violet glow.
+CURSOR_COLORS = {
+    "core": GALAXY_CORE,     # at the tip
+    "body": GALAXY_BLUE,     # the middle
+    "deep": GALAXY_INDIGO,   # at the tail
+    "rim": GALAXY_MAGENTA,
+    "glow": GALAXY_VIOLET,
+    "ink": GALAXY_INDIGO,    # outline around the star, so pastels show on white pages
+    "light": WHITE,          # the star's bright core
+}
+
+# The revolving star's colour tells you which step you're on.
+STAR_COLORS = {
+    "armed": HIKARI_YELLOW,  # ready: tap a start point or drag
+    "start": HIKARI_PINK,    # start placed: tap the end point
+    "copied": HIKARI_GREEN,  # copied: three-finger tap to paste
+}
 
 # kopi-kopi cursor size relative to your normal cursor. Bigger = easier to notice.
 CURSOR_SCALE = 1.5
-
-# Outline between the blue and the dark edge, so it stays visible on any background.
-OUTLINE = (255, 255, 255)
 
 # If the pointer moves more than this many pixels between press and release,
 # it counts as a drag (select-by-dragging) instead of a tap (mark a point).

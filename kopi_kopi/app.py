@@ -102,7 +102,14 @@ def run(debug=False):
 
     atexit.register(os_.cursor_off)  # never leave the user stuck with a blue cursor
     threading.Thread(target=worker, daemon=True).start()
-    jobs.put(os_.prepare_cursors)
+
+    def prepare():
+        started = time.time()
+        os_.prepare_cursors()
+        if time.time() - started > 1:
+            print("kopi-kopi: cursors drawn and cached, next start is instant.")
+
+    jobs.put(prepare)
     listener = os_.start_listener(handle, debug)
     print("kopi-kopi is running. Three-finger tap (or middle click) to start. Ctrl+C here to quit.")
     try:

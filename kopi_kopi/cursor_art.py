@@ -1,11 +1,16 @@
-"""Draws the kopi-kopi cursors and packs them into .cur files.
+"""Draws the kopi-kopi cursors and packs them into Windows cursor files.
 
-Shapes are polygons and circles on a 32x32 design grid. Each pixel's colour comes
-from its *signed distance* to a shape (negative = inside), which gives us
-outlines of any thickness and smooth (anti-aliased) edges at any size.
+Every shape lives on a 32x32 design grid. Each pixel's colour comes from its
+*signed distance* to a shape (negative = inside), which gives outlines of any
+thickness and smooth, anti-aliased edges at any size.
 
-Layers, from the outside in:  dark edge  ->  white outline  ->  kopi blue.
-The dark edge keeps the cursor visible on light backgrounds, the white on dark ones.
+The pointer is a little galaxy: a bright core at the hotspot fading through
+electric blue to deep indigo, a neon magenta rim and a soft violet glow.
+A star in the bottom-right corner revolves and breathes; its colour tells you
+the step (HIKARI pastels): yellow = ready, pink = start placed, green = copied.
+
+Animation is an .ani file: Windows itself flips the frames, so kopi-kopi does
+no work per frame and your clicks are never slowed down.
 
 No OS code here, so the art can be previewed and tested anywhere.
 """
@@ -13,112 +18,176 @@ No OS code here, so the art can be previewed and tested anywhere.
 import math
 import struct
 
-# Classic arrow, tip at the top-left.
+# --- shapes (design grid units) ----------------------------------------------
+
 ARROW = [(1, 1), (1, 21), (6, 16.5), (9.5, 24.5), (13, 23), (9.5, 15), (16, 15)]
 ARROW_HOTSPOT = (1, 1)
 
-# Text cursor (I-beam), shifted left to leave room for the badge.
-IBEAM = [(5, 4), (19, 4), (19, 8.5), (14.5, 8.5), (14.5, 23.5), (19, 23.5), (19, 28),
-         (5, 28), (5, 23.5), (9.5, 23.5), (9.5, 8.5), (5, 8.5)]
-IBEAM_HOTSPOT = (12, 16)
+IBEAM = [(6, 4), (17, 4), (17, 7.4), (13.3, 7.4), (13.3, 24.6), (17, 24.6), (17, 28),
+         (6, 28), (6, 24.6), (9.7, 24.6), (9.7, 7.4), (6, 7.4)]
+IBEAM_HOTSPOT = (11.5, 16)
 
-# Badges in the bottom-right corner, telling you which step you're on.
-BADGE_CENTER, BADGE_RADIUS = (25, 25), 6.5
-CHECK = [(21.8, 25.2), (24.2, 27.6), (28.4, 22.6)]  # the ✓ inside the "copied" badge
+STAR_CENTER = (24.5, 24.5)
+STAR_OUTER, STAR_INNER = 7.0, 2.1  # a 4-point sparkle: long points, thin waist
+GLOW_RADIUS = 4.0                  # how far the soft halo reaches past the star
 
-OUTLINE_W = 1.2   # white outline thickness, in design-grid pixels
-EDGE_W = 1.0      # dark outer edge thickness
-EDGE_COLOR = (20, 20, 30)
-EDGE_ALPHA = 0.7
+RIM_W = 1.3    # magenta rim thickness on the pointer
+GLOW_W = 2.6   # violet halo outside the rim, keeps it visible on dark backgrounds
+STAR_EDGE_W = 0.9
+
+FRAMES = 48         # frames per loop
+FRAME_JIFFIES = 2   # 1 jiffy = 1/60 s, so 2 = 30 frames per second
+
+# --- distance helpers ----------------------------------------------------------
 
 
-def _segment_dist(p, a, b):
-    (px, py), (ax, ay), (bx, by) = p, a, b
+def _segment_dist(px, py, ax, ay, bx, by):
     dx, dy = bx - ax, by - ay
-    t = max(0.0, min(1.0, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
+    t = ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)
+    t = 0.0 if t < 0 else 1.0 if t > 1 else t
     return math.hypot(px - ax - t * dx, py - ay - t * dy)
 
 
-def _polygon_sdf(p, poly):
-    """Distance to the polygon's edge; negative when p is inside."""
-    d = min(_segment_dist(p, poly[i - 1], poly[i]) for i in range(len(poly)))
+def _polygon_sdf(px, py, poly):
+    """Distance to the polygon's edge; negative when (px, py) is inside."""
+    d = min(_segment_dist(px, py, *poly[i - 1], *poly[i]) for i in range(len(poly)))
     inside = False
-    x, y = p
     for i in range(len(poly)):
         (x1, y1), (x2, y2) = poly[i - 1], poly[i]
-        if (y1 > y) != (y2 > y) and x < x1 + (y - y1) * (x2 - x1) / (y2 - y1):
+        if (y1 > py) != (y2 > py) and px < x1 + (py - y1) * (x2 - x1) / (y2 - y1):
             inside = not inside
     return -d if inside else d
 
 
-def _circle_sdf(p, center, r):
-    return math.hypot(p[0] - center[0], p[1] - center[1]) - r
-
-
-def _polyline_dist(p, pts):
-    return min(_segment_dist(p, pts[i], pts[i + 1]) for i in range(len(pts) - 1))
-
-
 def _cover(d, px):
-    """How much of a pixel (0..1) lies inside, given the distance in grid units.
+    """How much of one output pixel (0..1) is inside; `px` = pixel size in grid units.
 
-    `px` is the size of one output pixel in grid units; the 1-pixel ramp is the anti-aliasing.
+    The 1-pixel ramp around the edge is the anti-aliasing.
     """
-    return max(0.0, min(1.0, 0.5 - d / px))
+    v = 0.5 - d / px
+    return 0.0 if v < 0 else 1.0 if v > 1 else v
 
 
-def _over(dst, color, alpha):
-    """Paint `color` with `alpha` on top of dst (straight RGBA, 0..1 floats)."""
-    if alpha <= 0:
+def _over(dst, rgb, a):
+    """Paint colour `rgb` (0..1) with alpha `a` over `dst` (premultiplied RGBA)."""
+    if a <= 0:
         return dst
-    r, g, b, a = dst
-    out_a = alpha + a * (1 - alpha)
-    mix = lambda c_new, c_old: (c_new * alpha + c_old * a * (1 - alpha)) / out_a
-    return (mix(color[0], r), mix(color[1], g), mix(color[2], b), out_a)
+    k = 1 - a
+    return (rgb[0] * a + dst[0] * k, rgb[1] * a + dst[1] * k,
+            rgb[2] * a + dst[2] * k, a + dst[3] * k)
 
 
-def _layers(pixel, d, px, fill, outline, edge):
-    """Dark edge, then white outline, then blue fill, for one shape."""
-    pixel = _over(pixel, edge, EDGE_ALPHA * _cover(d - EDGE_W, px))
-    pixel = _over(pixel, outline, _cover(d, px))
-    return _over(pixel, fill, _cover(d + OUTLINE_W, px))
+def _unit(rgb):
+    return tuple(c / 255 for c in rgb)
+
+# --- drawing ------------------------------------------------------------------
 
 
-def render(shape, hotspot, fill, outline, size=32, badge=None):
-    """Return (pixels, hotspot): a size x size grid of 0..255 RGBA tuples.
+def star_points(angle, scale=1.0):
+    """The 4-point sparkle as a polygon, rotated by `angle` radians."""
+    cx, cy = STAR_CENTER
+    pts = []
+    for i in range(8):
+        r = (STAR_OUTER if i % 2 == 0 else STAR_INNER) * scale
+        a = angle + i * math.pi / 4 - math.pi / 2
+        pts.append((cx + r * math.cos(a), cy + r * math.sin(a)))
+    return pts
 
-    shape: ARROW or IBEAM.  badge: None, "start" (a ring) or "copied" (a tick).
+
+def _lerp(a, b, t):
+    return tuple(x + (y - x) * t for x, y in zip(a, b))
+
+
+def draw_pointer(shape, hotspot, size, colors):
+    """The pointer on its own: a size x size grid of premultiplied RGBA floats.
+
+    The body colour depends on the distance from the hotspot: bright core where
+    you aim, electric blue in the middle, deep indigo at the far end.
     """
-    px = 32 / size  # one output pixel, measured in design-grid units
-    fill = tuple(c / 255 for c in fill)
-    outline = tuple(c / 255 for c in outline)
-    edge = tuple(c / 255 for c in EDGE_COLOR)
-    pixels = []
+    px = 32 / size
+    core, body, deep = _unit(colors["core"]), _unit(colors["body"]), _unit(colors["deep"])
+    rim, glow = _unit(colors["rim"]), _unit(colors["glow"])
+    hx, hy = hotspot
+    reach = max(math.hypot(x - hx, y - hy) for x, y in shape)
+    grid = []
     for y in range(size):
         row = []
         for x in range(size):
-            p = ((x + 0.5) * px, (y + 0.5) * px)
-            pixel = (0.0, 0.0, 0.0, 0.0)
-            pixel = _layers(pixel, _polygon_sdf(p, shape), px, fill, outline, edge)
-            if badge:
-                d = _circle_sdf(p, BADGE_CENTER, BADGE_RADIUS)
-                pixel = _layers(pixel, d, px, fill, outline, edge)
-                if badge == "start":  # punch a white hole: a ring means "waiting for the end"
-                    pixel = _over(pixel, outline, _cover(d + 3.4, px))
-                else:                 # a white tick means "copied, ready to paste"
-                    pixel = _over(pixel, outline, _cover(_polyline_dist(p, CHECK) - 1.1, px))
-            row.append(tuple(round(c * 255) for c in pixel))
-        pixels.append(row)
-    hx = min(size - 1, int(hotspot[0] / px))
-    hy = min(size - 1, int(hotspot[1] / px))
-    return pixels, (hx, hy)
+            gx, gy = (x + 0.5) * px, (y + 0.5) * px
+            d = _polygon_sdf(gx, gy, shape)
+            p = (0.0, 0.0, 0.0, 0.0)
+            if 0 < d < GLOW_W:  # nebula glow, fading out
+                fade = 1 - d / GLOW_W
+                p = _over(p, glow, 0.55 * fade * fade)
+            p = _over(p, rim, _cover(d, px))
+            t = min(1.0, math.hypot(gx - hx, gy - hy) / reach)
+            fill = _lerp(core, body, t / 0.45) if t < 0.45 else _lerp(body, deep, (t - 0.45) / 0.55)
+            p = _over(p, fill, _cover(d + RIM_W, px))
+            row.append(p)
+        grid.append(row)
+    return grid
 
 
-def to_cur_bytes(pixels, hotspot):
-    """Pack an RGBA grid into the Windows .cur file format (32-bit, with alpha)."""
-    size = len(pixels)
+def _star_box(size):
+    """The pixel square the star and its glow can touch, so we only redraw that."""
+    px = 32 / size
+    reach = STAR_OUTER * 1.08 + GLOW_RADIUS + 1
+    lo = max(0, int((STAR_CENTER[0] - reach) / px))
+    hi = min(size, int((STAR_CENTER[0] + reach) / px) + 1)
+    return lo, hi
+
+
+def draw_frame(base, frame, color, ink, light):
+    """One animation frame: the pointer plus the star at step `frame` of the loop."""
+    size = len(base)
+    px = 32 / size
+    t = frame / FRAMES                     # 0..1 around the loop
+    angle = t * math.pi / 2                # a quarter turn per loop: seamless for 4 points
+    breathe = 0.5 - 0.5 * math.cos(2 * math.pi * t)  # 0 -> 1 -> 0, smooth
+    star = star_points(angle, scale=0.94 + 0.12 * breathe)
+    color, ink, light = _unit(color), _unit(ink), _unit(light)
+    glow_alpha = 0.25 + 0.3 * breathe
+    cx, cy = STAR_CENTER
+
+    grid = [row[:] for row in base]
+    lo, hi = _star_box(size)
+    for y in range(lo, hi):
+        for x in range(lo, hi):
+            gx, gy = (x + 0.5) * px, (y + 0.5) * px
+            d = _polygon_sdf(gx, gy, star)
+            p = grid[y][x]
+            if d > 0:  # soft halo outside the star, fading with distance
+                fade = max(0.0, 1 - d / GLOW_RADIUS)
+                p = _over(p, color, glow_alpha * fade * fade)
+            p = _over(p, ink, _cover(d - STAR_EDGE_W, px))
+            p = _over(p, color, _cover(d, px))
+            # a bright core, like light caught in the middle of the star
+            core = math.hypot(gx - cx, gy - cy) - (0.9 + 0.5 * breathe)
+            p = _over(p, light, 0.85 * _cover(core, px))
+            grid[y][x] = p
+    return grid
+
+
+def hotspot_px(hotspot, size):
+    px = 32 / size
+    return min(size - 1, int(hotspot[0] / px)), min(size - 1, int(hotspot[1] / px))
+
+# --- file formats ---------------------------------------------------------------
+
+
+def to_cur_bytes(grid, hotspot):
+    """Pack a premultiplied RGBA float grid into a .cur file (32-bit with alpha)."""
+    size = len(grid)
+
+    def bgra(p):
+        r, g, b, a = p
+        if a <= 0:
+            return b"\0\0\0\0"
+        # .cur wants straight (not premultiplied) alpha
+        return bytes((round(b / a * 255), round(g / a * 255), round(r / a * 255), round(a * 255)))
+
     # Colour data: BGRA, rows stored bottom-up (a BMP quirk).
-    xor = b"".join(bytes((b, g, r, a)) for row in reversed(pixels) for (r, g, b, a) in row)
+    xor = b"".join(bgra(p) for row in reversed(grid) for p in row)
     # AND mask: 1 bit per pixel, rows padded to 4 bytes. All zero, because alpha does the work.
     and_mask = bytes(((size + 31) // 32) * 4 * size)
     header = struct.pack(
@@ -135,3 +204,26 @@ def to_cur_bytes(pixels, hotspot):
         len(image), 6 + 16,
     )
     return icondir + entry + image
+
+
+def _chunk(tag, data):
+    pad = b"\0" if len(data) % 2 else b""
+    return tag + struct.pack("<I", len(data)) + data + pad
+
+
+def to_ani_bytes(frames, hotspot, jiffies=FRAME_JIFFIES):
+    """Pack frames into an animated cursor (.ani): a RIFF file holding one .cur per frame."""
+    n = len(frames)
+    # anih header: size, frames, steps, (w, h, bits, planes: unused), rate, flags (1 = frames are .cur data)
+    anih = struct.pack("<9I", 36, n, n, 0, 0, 0, 0, jiffies, 1)
+    icons = b"".join(_chunk(b"icon", to_cur_bytes(f, hotspot)) for f in frames)
+    body = b"ACON" + _chunk(b"anih", anih) + _chunk(b"LIST", b"fram" + icons)
+    return b"RIFF" + struct.pack("<I", len(body)) + body
+
+
+def build_ani(shape, hotspot, size, colors, star_color):
+    """Everything above in one call: draw the pointer, animate the star, pack an .ani."""
+    base = draw_pointer(shape, hotspot, size, colors)
+    frames = [draw_frame(base, i, star_color, colors["ink"], colors["light"])
+              for i in range(FRAMES)]
+    return to_ani_bytes(frames, hotspot_px(hotspot, size))
