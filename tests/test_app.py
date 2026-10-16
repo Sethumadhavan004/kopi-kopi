@@ -69,14 +69,14 @@ def test_drag_copies_then_paste(monkeypatch):
     fake = FakeOS(DRAG_THEN_PASTE, selection=True)
     run_with(monkeypatch, fake)
     assert fake.sent == ["ctrl+c", "click", "ctrl+v"]
-    assert fake.cursors == ["armed", "copied", None]
+    assert fake.cursors == ["armed", "selecting", "copied", None]
 
 
 def test_copying_nothing_never_pastes_the_old_clipboard(monkeypatch):
     fake = FakeOS(DRAG_THEN_PASTE[:4], selection=False)
     run_with(monkeypatch, fake)
     assert fake.sent == ["ctrl+c"]                         # tried to copy, nothing changed
-    assert fake.cursors == ["armed", "copied", "armed"]    # back to "pick a start point"
+    assert fake.cursors == ["armed", "selecting", "copied", "armed"]  # back to "pick a start point"
 
 
 def test_tap_tap_uses_shift_click(monkeypatch):
@@ -86,4 +86,4 @@ def test_tap_tap_uses_shift_click(monkeypatch):
     fake = FakeOS(script, selection=True)
     run_with(monkeypatch, fake)
     assert fake.sent == ["shift+click", "ctrl+c"]
-    assert fake.cursors == ["armed", "start", "copied"]
+    assert fake.cursors == ["armed", "selecting", "copied"]

@@ -6,8 +6,11 @@ thickness and smooth, anti-aliased edges at any size.
 
 The pointer is a little galaxy: a bright core at the hotspot fading through
 electric blue to deep indigo, a neon magenta rim and a soft violet glow.
-A star in the bottom-right corner revolves and breathes; its colour tells you
-the step (HIKARI pastels): yellow = ready, pink = start placed, green = copied.
+A star in the bottom-right corner revolves. Its colour (HIKARI pastels) and its
+motion tell you the step:
+  yellow, calm spin         ready
+  pink, spin + heartbeat    selecting (dragging, or start placed)
+  green, calm spin          copied, ready to paste
 
 Animation is an .ani file: Windows itself flips the frames, so kopi-kopi does
 no work per frame and your clicks are never slowed down.
@@ -27,15 +30,15 @@ IBEAM = [(6, 4), (17, 4), (17, 7.4), (13.3, 7.4), (13.3, 24.6), (17, 24.6), (17,
          (6, 28), (6, 24.6), (9.7, 24.6), (9.7, 7.4), (6, 7.4)]
 IBEAM_HOTSPOT = (11.5, 16)
 
-STAR_CENTER = (24.5, 24.5)
-STAR_OUTER, STAR_INNER = 7.0, 2.1  # a 4-point sparkle: long points, thin waist
+STAR_CENTER = (24, 24)
+STAR_OUTER, STAR_INNER = 6.6, 2.0  # a 4-point sparkle: long points, thin waist
 GLOW_RADIUS = 4.0                  # how far the soft halo reaches past the star
 
 RIM_W = 1.3    # magenta rim thickness on the pointer
 GLOW_W = 2.6   # violet halo outside the rim, keeps it visible on dark backgrounds
 STAR_EDGE_W = 0.9
 
-FRAMES = 48         # frames per loop
+FRAMES = 48         # frames per loop (1.6 s, so the heartbeat runs at about 75 bpm)
 FRAME_JIFFIES = 2   # 1 jiffy = 1/60 s, so 2 = 30 frames per second
 
 # --- distance helpers ----------------------------------------------------------
@@ -131,22 +134,44 @@ def draw_pointer(shape, hotspot, size, colors):
 def _star_box(size):
     """The pixel square the star and its glow can touch, so we only redraw that."""
     px = 32 / size
-    reach = STAR_OUTER * 1.08 + GLOW_RADIUS + 1
+    reach = STAR_OUTER * MAX_SCALE + GLOW_RADIUS + 1
     lo = max(0, int((STAR_CENTER[0] - reach) / px))
     hi = min(size, int((STAR_CENTER[0] + reach) / px) + 1)
     return lo, hi
 
 
-def draw_frame(base, frame, color, ink, light):
+MAX_SCALE = 1.2  # the star's size at the peak of a heartbeat
+
+
+def _beat(t, at, width):
+    """A smooth bump centred at `at`, measured around the loop so it wraps cleanly."""
+    d = abs(t - at)
+    d = min(d, 1 - d)  # distance on a circle: 0.95 is close to 0.05
+    return math.exp(-(d / width) ** 2)
+
+
+def pulse(t, motion):
+    """How "big" the star is at loop position t (0..1): returns 0..1.
+
+    spin:       a slow, gentle breath
+    heartbeat:  lub (strong) - dub (softer) - rest, like a heart
+    """
+    if motion == "heartbeat":
+        return min(1.0, _beat(t, 0.12, 0.06) + 0.65 * _beat(t, 0.32, 0.06))
+    return 0.5 - 0.5 * math.cos(2 * math.pi * t)
+
+
+def draw_frame(base, frame, color, ink, light, motion="spin"):
     """One animation frame: the pointer plus the star at step `frame` of the loop."""
     size = len(base)
     px = 32 / size
     t = frame / FRAMES                     # 0..1 around the loop
     angle = t * math.pi / 2                # a quarter turn per loop: seamless for 4 points
-    breathe = 0.5 - 0.5 * math.cos(2 * math.pi * t)  # 0 -> 1 -> 0, smooth
-    star = star_points(angle, scale=0.94 + 0.12 * breathe)
+    breathe = pulse(t, motion)
+    grow = (MAX_SCALE - 0.92) if motion == "heartbeat" else 0.12
+    star = star_points(angle, scale=0.92 + grow * breathe)
     color, ink, light = _unit(color), _unit(ink), _unit(light)
-    glow_alpha = 0.25 + 0.3 * breathe
+    glow_alpha = 0.25 + 0.35 * breathe
     cx, cy = STAR_CENTER
 
     grid = [row[:] for row in base]
@@ -221,9 +246,9 @@ def to_ani_bytes(frames, hotspot, jiffies=FRAME_JIFFIES):
     return b"RIFF" + struct.pack("<I", len(body)) + body
 
 
-def build_ani(shape, hotspot, size, colors, star_color):
+def build_ani(shape, hotspot, size, colors, star_color, motion="spin"):
     """Everything above in one call: draw the pointer, animate the star, pack an .ani."""
     base = draw_pointer(shape, hotspot, size, colors)
-    frames = [draw_frame(base, i, star_color, colors["ink"], colors["light"])
+    frames = [draw_frame(base, i, star_color, colors["ink"], colors["light"], motion)
               for i in range(FRAMES)]
     return to_ani_bytes(frames, hotspot_px(hotspot, size))

@@ -25,11 +25,12 @@ CURSOR_COLORS = {
     "light": WHITE,          # the star's bright core
 }
 
-# The revolving star's colour tells you which step you're on.
-STAR_COLORS = {
-    "armed": HIKARI_YELLOW,  # ready: tap a start point or drag
-    "start": HIKARI_PINK,    # start placed: tap the end point
-    "copied": HIKARI_GREEN,  # copied: three-finger tap to paste
+# The revolving star's colour and motion tell you which step you're on.
+# Motion: "spin" = waiting for you, "heartbeat" = a selection is in progress.
+STARS = {
+    "armed": (HIKARI_YELLOW, "spin"),          # ready: tap a start point or drag
+    "selecting": (HIKARI_PINK, "heartbeat"),   # dragging, or start placed: tap the end point
+    "copied": (HIKARI_GREEN, "spin"),          # copied: three-finger tap to paste
 }
 
 # kopi-kopi cursor size relative to your normal cursor. Bigger = easier to notice.

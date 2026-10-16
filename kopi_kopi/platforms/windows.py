@@ -127,7 +127,7 @@ def _cache_dir():
     # The file names include a fingerprint of the art and colours, so editing
     # cursor_art.py or config.py makes fresh files instead of reusing stale ones.
     art = Path(cursor_art.__file__).read_bytes()
-    looks = repr((config.CURSOR_COLORS, config.STAR_COLORS)).encode()
+    looks = repr((config.CURSOR_COLORS, config.STARS)).encode()
     tag = hashlib.sha1(art + looks).hexdigest()[:10]
     path = Path(tempfile.gettempdir()) / "kopi-kopi" / tag
     path.mkdir(parents=True, exist_ok=True)
@@ -141,7 +141,7 @@ def prepare_cursors():
     """Draw every animated cursor once (a few seconds, first run only) and cache them on disk."""
     size = _cursor_size()
     folder = _cache_dir()
-    for look, star in config.STAR_COLORS.items():
+    for look, (star, motion) in config.STARS.items():
         if (look, size) in _files:
             continue
         paths = []
@@ -149,14 +149,14 @@ def prepare_cursors():
             path = folder / f"{look}-{name}-{size}.ani"
             if not path.exists():
                 tmp = path.with_suffix(".part")  # write then rename: never a half-written file
-                tmp.write_bytes(build_ani(shape, hotspot, size, config.CURSOR_COLORS, star))
+                tmp.write_bytes(build_ani(shape, hotspot, size, config.CURSOR_COLORS, star, motion))
                 os.replace(tmp, path)
             paths.append(str(path))
         _files[look, size] = tuple(paths)
 
 
 def set_cursor(look):
-    """Show the kopi-kopi cursor for `look` ("armed", "start", "copied"), or None for normal.
+    """Show the kopi-kopi cursor for `look` ("armed", "selecting", "copied"), or None for normal.
 
     The cursors are animated (.ani): Windows plays the frames itself, so kopi-kopi
     does nothing per frame and never slows your clicks down.

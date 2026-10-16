@@ -116,7 +116,7 @@ def test_cursor_look_follows_each_step():
     k.left_down(90, 90)
     k.left_up(90, 90)
     looks.append(k.look)
-    assert looks == [None, "armed", "start", "copied"]
+    assert looks == [None, "armed", "selecting", "copied"]
 
 
 def test_failed_copy_goes_back_to_armed_so_you_can_retry():
@@ -140,3 +140,24 @@ def test_late_copy_failure_after_paste_trigger_changes_nothing():
     k.trigger_down()  # paste requested before the copy check finished
     k.copy_failed()
     assert k.state == State.OFF
+
+
+def test_heartbeat_starts_the_moment_you_press():
+    k = make()
+    k.trigger_down()
+    k.left_down(10, 10)
+    assert k.look == "selecting"      # mid-drag (or start tap): already pulsing
+    k.left_up(300, 10)
+    assert k.look == "copied"         # drag finished: calm again
+
+
+def test_pressing_while_off_or_copied_changes_nothing():
+    k = make()
+    k.left_down(1, 1)
+    assert k.look is None
+    k.left_up(1, 1)
+    k.trigger_down()
+    k.left_down(0, 0)
+    k.left_up(100, 0)
+    k.left_down(5, 5)                 # clicking to focus the paste target
+    assert k.look == "copied"

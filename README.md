@@ -3,7 +3,7 @@
 Copy and paste with taps instead of keyboard shortcuts.
 Made for copying long terminal logs into Claude Code without wrestling with your trackpad.
 
-![kopi-kopi cursors: yellow star = ready, pink = start placed, green = copied](docs/cursors.gif)
+![kopi-kopi cursors: yellow star = ready, pink heartbeat = selecting, green = copied](docs/cursors.gif)
 
 ```
 three-finger tap  →  cursor turns blue
@@ -15,7 +15,13 @@ three-finger tap  →  pasted where your pointer is, cursor back to normal
 Three-finger tap again before copying cancels.
 
 The cursor turns into a small galaxy, and a revolving star tells you where you are:
-**yellow** = ready, **pink** = start placed, **green** = copied, tap to paste.
+
+| Star | Meaning |
+|---|---|
+| yellow, calm spin | ready: tap a start point or drag |
+| pink, spin **+ heartbeat** | selecting: you're dragging, or the start point is placed |
+| green, calm spin | copied: three-finger tap to paste |
+
 If nothing was selected you go back to yellow, and the old clipboard is never pasted.
 The star colours come from my HIKARI design system.
 Everything goes through the normal clipboard, so **Win+V** clipboard history keeps working.

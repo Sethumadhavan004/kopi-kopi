@@ -19,7 +19,7 @@ from kopi_kopi.cursor_art import (  # noqa: E402
 )
 
 SIZE, ZOOM, CELL = 64, 2, 140
-LOOKS = ["armed", "start", "copied"]
+LOOKS = ["armed", "selecting", "copied"]
 GROUNDS = [(0x12, 0x0A, 0x0B), (0xFF, 0xF4, 0xF0)]  # HIKARI paper: Ankoku dark, Hikari light
 
 
@@ -44,7 +44,8 @@ def main(out):
             sheet.paste(ground, (0, gi * CELL, sheet.width, (gi + 1) * CELL))
             for li, look in enumerate(LOOKS):
                 for bi, base in enumerate(bases):
-                    img = to_image(draw_frame(base, i, config.STAR_COLORS[look], c["ink"], c["light"]))
+                    color, motion = config.STARS[look]
+                    img = to_image(draw_frame(base, i, color, c["ink"], c["light"], motion))
                     x = (li * len(bases) + bi) * CELL + (CELL - img.width) // 2
                     sheet.paste(img, (x, gi * CELL + (CELL - img.height) // 2), img)
         frames.append(sheet.quantize(64, dither=Image.Dither.NONE))  # fewer colours = smaller GIF

@@ -22,7 +22,7 @@ from enum import Enum, auto
 
 class State(Enum):
     OFF = auto()        # normal computer, nothing intercepted
-    ARMED = auto()      # blue cursor, waiting for a start tap or a drag
+    ARMED = auto()      # kopi cursor on, waiting for a start tap or a drag
     HAS_START = auto()  # start point placed, waiting for the end tap
     COPIED = auto()     # text is on the clipboard, waiting for the paste trigger
 
@@ -36,8 +36,8 @@ class Action(Enum):
 LOOKS = {
     State.OFF: None,
     State.ARMED: "armed",
-    State.HAS_START: "start",   # ring badge: waiting for the end point
-    State.COPIED: "copied",     # tick badge: ready to paste
+    State.HAS_START: "selecting",  # heartbeat: start placed, waiting for the end point
+    State.COPIED: "copied",        # calm spin: ready to paste
 }
 
 
@@ -56,7 +56,13 @@ class KopiKopi:
 
     @property
     def look(self):
-        """Which cursor to show: None means the normal system cursor."""
+        """Which cursor to show: None means the normal system cursor.
+
+        Holding the button down while ARMED is the start of a drag (or the start tap),
+        so it already shows "selecting": the heartbeat begins the moment you press.
+        """
+        if self.state == State.ARMED and self._down_at is not None:
+            return "selecting"
         return LOOKS[self.state]
 
     def copy_failed(self):

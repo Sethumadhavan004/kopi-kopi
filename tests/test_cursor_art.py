@@ -18,7 +18,7 @@ def chunks(data):
 
 
 def test_ani_file_structure():
-    data = build_ani(ARROW, ARROW_HOTSPOT, 32, C, config.STAR_COLORS["armed"])
+    data = build_ani(ARROW, ARROW_HOTSPOT, 32, C, *config.STARS["armed"])
     assert data[:4] == b"RIFF" and data[8:12] == b"ACON"
     assert struct.unpack("<I", data[4:8])[0] == len(data) - 8
     found = dict(chunks(data[12:]))
@@ -37,16 +37,17 @@ def test_ani_file_structure():
 
 def test_animation_loops_without_a_jump():
     base = draw_pointer(ARROW, ARROW_HOTSPOT, 32, C)
-    star = config.STAR_COLORS["copied"]
-    first = draw_frame(base, 0, star, C["ink"], C["light"])
-    after_last = draw_frame(base, FRAMES, star, C["ink"], C["light"])
-    worst = max(abs(a - b) for r1, r2 in zip(first, after_last)
-                for p1, p2 in zip(r1, r2) for a, b in zip(p1, p2))
-    assert worst < 1e-6
+    for color, motion in config.STARS.values():
+        first = draw_frame(base, 0, color, C["ink"], C["light"], motion)
+        after_last = draw_frame(base, FRAMES, color, C["ink"], C["light"], motion)
+        worst = max(abs(a - b) for r1, r2 in zip(first, after_last)
+                    for p1, p2 in zip(r1, r2) for a, b in zip(p1, p2))
+        assert worst < 1e-6, motion
 
 
 def test_star_only_touches_its_corner():
     # The pointer itself must look identical in every frame; only the star moves.
     base = draw_pointer(ARROW, ARROW_HOTSPOT, 32, C)
-    frame = draw_frame(base, 7, config.STAR_COLORS["start"], C["ink"], C["light"])
+    color, motion = config.STARS["selecting"]
+    frame = draw_frame(base, 7, color, C["ink"], C["light"], motion)
     assert frame[2][2] == base[2][2]  # near the tip
