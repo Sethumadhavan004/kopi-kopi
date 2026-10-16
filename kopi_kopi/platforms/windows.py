@@ -22,7 +22,11 @@ MODIFIER = keyboard.Key.ctrl
 
 WM_LBUTTONDOWN, WM_LBUTTONUP = 0x0201, 0x0202
 WM_MBUTTONDOWN, WM_MBUTTONUP = 0x0207, 0x0208
-LLMHF_INJECTED = 0x01  # set on events made by programs (including us), not by your hand
+
+# Our own synthetic clicks carry this tag, so the hook can recognise and ignore them.
+# (Windows' "injected" flag isn't enough: touchpad drivers inject events too,
+# including the middle click made by a three-finger tap.)
+KOPI_TAG = 0x4B4F5049  # "KOPI" in ASCII
 
 EVENTS = {
     WM_LBUTTONDOWN: "left_down",
@@ -49,7 +53,7 @@ def _dpi_aware():
 _dpi_aware()
 
 
-def start_listener(handle):
+def start_listener(handle, debug=False):
     """Install the mouse hook. `handle(event, x, y)` returns True to swallow the event.
 
     Windows calls the filter on its own thread *before* the event reaches any app,
@@ -59,8 +63,10 @@ def start_listener(handle):
 
     def win32_event_filter(msg, data):
         event = EVENTS.get(msg)
-        if event is None or data.flags & LLMHF_INJECTED:
+        if event is None or data.dwExtraInfo == KOPI_TAG:
             return True  # not ours to judge (moves, scrolls, our own synthetic clicks)
+        if debug:
+            print(f"  raw {event:<12} flags={data.flags:#x} extra={data.dwExtraInfo}")
         if handle(event, data.pt.x, data.pt.y):
             listener.suppress_event()  # raises internally; the app never sees this event
         return True
@@ -68,6 +74,48 @@ def start_listener(handle):
     listener = mouse.Listener(win32_event_filter=win32_event_filter)
     listener.start()
     return listener
+
+
+class _MOUSEINPUT(ctypes.Structure):
+    _fields_ = [("dx", wintypes.LONG), ("dy", wintypes.LONG), ("mouseData", wintypes.DWORD),
+                ("dwFlags", wintypes.DWORD), ("time", wintypes.DWORD),
+                ("dwExtraInfo", ctypes.c_size_t)]
+
+
+class _KEYBDINPUT(ctypes.Structure):
+    _fields_ = [("wVk", wintypes.WORD), ("wScan", wintypes.WORD), ("dwFlags", wintypes.DWORD),
+                ("time", wintypes.DWORD), ("dwExtraInfo", ctypes.c_size_t)]
+
+
+class _INPUT(ctypes.Structure):
+    class _U(ctypes.Union):
+        _fields_ = [("mi", _MOUSEINPUT), ("ki", _KEYBDINPUT)]
+    _anonymous_ = ("u",)
+    _fields_ = [("type", wintypes.DWORD), ("u", _U)]
+
+
+INPUT_MOUSE, INPUT_KEYBOARD = 0, 1
+MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP = 0x0002, 0x0004
+KEYEVENTF_KEYUP = 0x0002
+VK_SHIFT = 0x10
+
+
+def _mouse(flags):
+    return _INPUT(type=INPUT_MOUSE, mi=_MOUSEINPUT(dwFlags=flags, dwExtraInfo=KOPI_TAG))
+
+
+def _key(vk, up=False):
+    return _INPUT(type=INPUT_KEYBOARD,
+                  ki=_KEYBDINPUT(wVk=vk, dwFlags=KEYEVENTF_KEYUP if up else 0, dwExtraInfo=KOPI_TAG))
+
+
+def click(shift=False):
+    """Left click at the pointer, optionally with Shift held, as one atomic batch."""
+    inputs = [_mouse(MOUSEEVENTF_LEFTDOWN), _mouse(MOUSEEVENTF_LEFTUP)]
+    if shift:
+        inputs = [_key(VK_SHIFT)] + inputs + [_key(VK_SHIFT, up=True)]
+    batch = (_INPUT * len(inputs))(*inputs)
+    user32.SendInput(len(inputs), batch, ctypes.sizeof(_INPUT))
 
 
 def _cursor_file(name, art, hotspot, size):

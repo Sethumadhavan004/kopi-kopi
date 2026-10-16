@@ -23,7 +23,8 @@ Everything goes through the normal clipboard, so **Win+V** clipboard history kee
    pip install -r requirements.txt
    python -m kopi_kopi
    ```
-3. Quit with Ctrl+C in that window. If the cursor ever stays blue: `python -m kopi_kopi --reset-cursor`.
+3. Quit with Ctrl+C in that window. Add `--debug` to print every click it sees.
+   If the cursor ever stays blue: `python -m kopi_kopi --reset-cursor`.
 
 macOS and Linux: coming next. The core logic is already OS-independent.
 
@@ -45,7 +46,9 @@ Ideas behind it:
 - **Drags aren't touched at all.** The app selects as usual, and kopi-kopi copies when you let go.
   If the app already copied on its own (Claude Code does), kopi-kopi skips Ctrl+C, because in a terminal
   Ctrl+C with nothing selected means "stop the program".
-- **Our own synthetic clicks are ignored** by the hook (Windows marks them as "injected"), so kopi-kopi never reacts to itself.
+- **Our own synthetic clicks are ignored** by the hook: kopi-kopi stamps them with a tag ("KOPI") and skips
+  tagged events. Windows' generic "injected" flag isn't enough, because touchpad drivers inject events too,
+  including the three-finger-tap middle click.
 
 ## Tests
 

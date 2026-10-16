@@ -2,6 +2,7 @@
 
 Each backend provides the same few things, so app.py never needs to know the OS:
   start_listener(handle)  hook the mouse; handle(event, x, y) -> True to swallow it
+  click(shift=False)      left click at the pointer, ignored by our own hook
   cursor_on() / cursor_off()
   clipboard_seq()         a number that changes whenever the clipboard changes
   MODIFIER                the copy/paste key (Ctrl on Windows/Linux, Cmd on macOS)

@@ -20,14 +20,13 @@ def run(debug=False):
     os_ = platforms.load()  # first, so an unsupported OS gets a clear message
     from importlib.metadata import version
 
-    from pynput import keyboard, mouse
+    from pynput import keyboard
 
     print(f"kopi-kopi: Python {platform.python_version()}, pynput {version('pynput')}")
 
     kopi = KopiKopi(config.DRAG_THRESHOLD_PX)
     jobs = queue.Queue()
     keys = keyboard.Controller()
-    pointer = mouse.Controller()
     press_seq = [0]  # clipboard counter when the current press started
 
     def tap(key):
@@ -44,13 +43,12 @@ def run(debug=False):
             if os_.clipboard_seq() == seq_at_press:  # the app didn't copy it by itself
                 tap("c")
         elif action == Action.SHIFT_CLICK_COPY:
-            with keys.pressed(keyboard.Key.shift):
-                pointer.click(mouse.Button.left)
+            os_.click(shift=True)
             time.sleep(0.05)  # let the app finish selecting before we copy
             tap("c")
         elif action == Action.PASTE:
             if config.CLICK_BEFORE_PASTE:
-                pointer.click(mouse.Button.left)
+                os_.click()
                 time.sleep(0.05)
             tap("v")
 
@@ -79,7 +77,7 @@ def run(debug=False):
 
     atexit.register(os_.cursor_off)  # never leave the user stuck with a blue cursor
     threading.Thread(target=worker, daemon=True).start()
-    listener = os_.start_listener(handle)
+    listener = os_.start_listener(handle, debug)
     print("kopi-kopi is running. Three-finger tap (or middle click) to start. Ctrl+C here to quit.")
     try:
         while listener.is_alive():
