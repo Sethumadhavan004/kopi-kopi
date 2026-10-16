@@ -7,6 +7,7 @@ They talk through a queue, so the hook never waits on the worker.
 """
 
 import atexit
+import platform
 import queue
 import threading
 import time
@@ -15,9 +16,13 @@ from . import config, platforms
 from .core import Action, KopiKopi, State
 
 
-def run():
+def run(debug=False):
     os_ = platforms.load()  # first, so an unsupported OS gets a clear message
+    from importlib.metadata import version
+
     from pynput import keyboard, mouse
+
+    print(f"kopi-kopi: Python {platform.python_version()}, pynput {version("pynput")}")
 
     kopi = KopiKopi(config.DRAG_THRESHOLD_PX)
     jobs = queue.Queue()
@@ -67,6 +72,9 @@ def run():
             result = getattr(kopi, event)()
         for action in result.actions:
             jobs.put((action, press_seq[0]))
+        if debug:
+            names = [a.name for a in result.actions]
+            print(f"  {event:<12} ({x},{y})  -> {kopi.state.name:<9} swallow={result.suppress} {names}")
         return result.suppress
 
     atexit.register(os_.cursor_off)  # never leave the user stuck with a blue cursor
@@ -76,5 +84,9 @@ def run():
     try:
         while listener.is_alive():
             listener.join(0.5)  # short waits so Ctrl+C can get through on Windows
+        # The listener thread ended on its own: join() re-raises whatever killed it,
+        # so the error is shown instead of the program quietly exiting.
+        listener.join()
+        print("kopi-kopi: the mouse listener stopped unexpectedly.")
     except KeyboardInterrupt:
         pass

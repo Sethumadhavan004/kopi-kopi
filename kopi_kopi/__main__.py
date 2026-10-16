@@ -1,4 +1,5 @@
-"""Entry point: `python -m kopi_kopi` (or `python -m kopi_kopi --reset-cursor`)."""
+"""Entry point: `python -m kopi_kopi`, with `--debug` to print every click,
+or `--reset-cursor` to restore the normal cursor."""
 
 import sys
 
@@ -8,4 +9,4 @@ if "--reset-cursor" in sys.argv:
     platforms.load().cursor_off()
 else:
     from .app import run
-    run()
+    run(debug="--debug" in sys.argv)
