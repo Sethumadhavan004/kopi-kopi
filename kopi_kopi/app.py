@@ -22,7 +22,7 @@ def run(debug=False):
 
     from pynput import keyboard, mouse
 
-    print(f"kopi-kopi: Python {platform.python_version()}, pynput {version("pynput")}")
+    print(f"kopi-kopi: Python {platform.python_version()}, pynput {version('pynput')}")
 
     kopi = KopiKopi(config.DRAG_THRESHOLD_PX)
     jobs = queue.Queue()
