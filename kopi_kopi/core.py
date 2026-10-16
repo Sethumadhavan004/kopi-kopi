@@ -12,6 +12,8 @@ backend (Windows today, macOS/Linux next) shares exactly the same behaviour.
                        +-------------drag-----------------+
 
 A trigger while ARMED or HAS_START cancels back to OFF.
+If a copy turns out to have copied nothing, COPIED falls back to ARMED.
+The cursor is a pure function of the state (see `look`), so it can never disagree with it.
 """
 
 from dataclasses import dataclass, field
@@ -26,11 +28,17 @@ class State(Enum):
 
 
 class Action(Enum):
-    CURSOR_ON = auto()        # show the blue cursor
-    CURSOR_OFF = auto()       # restore the normal cursor
     COPY_AFTER_DRAG = auto()  # copy, unless the app already auto-copied the drag
     SHIFT_CLICK_COPY = auto() # shift+click at the pointer (extends selection), then copy
     PASTE = auto()            # (optionally click, then) paste
+
+
+LOOKS = {
+    State.OFF: None,
+    State.ARMED: "armed",
+    State.HAS_START: "start",   # ring badge: waiting for the end point
+    State.COPIED: "copied",     # tick badge: ready to paste
+}
 
 
 @dataclass
@@ -46,6 +54,16 @@ class KopiKopi:
         self._down_at = None          # where the current left press started
         self._left_suppressed = False # did we swallow the current left press?
 
+    @property
+    def look(self):
+        """Which cursor to show: None means the normal system cursor."""
+        return LOOKS[self.state]
+
+    def copy_failed(self):
+        """The clipboard didn't change: nothing was selected. Go back and let you retry."""
+        if self.state == State.COPIED:
+            self.state = State.ARMED
+
     # --- trigger (middle click / three-finger tap) -------------------------
 
     def trigger_down(self):
@@ -55,13 +73,13 @@ class KopiKopi:
         self._down_at = None
         if self.state == State.OFF:
             self.state = State.ARMED
-            return Result(True, [Action.CURSOR_ON])
+            return Result(True)
         if self.state == State.COPIED:
             self.state = State.OFF
-            return Result(True, [Action.PASTE, Action.CURSOR_OFF])
+            return Result(True, [Action.PASTE])
         # ARMED or HAS_START: changed your mind, cancel.
         self.state = State.OFF
-        return Result(True, [Action.CURSOR_OFF])
+        return Result(True)
 
     def trigger_up(self):
         # Swallow the release too, otherwise apps get a release with no press.

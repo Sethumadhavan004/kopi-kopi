@@ -1,10 +1,14 @@
 """Settings you might want to tweak. Everything else reads from here."""
 
 # Cursor colour while kopi-kopi is ON (R, G, B).
-# A blue close to the one Claude Code uses for its permission/suggestion text.
-KOPI_BLUE = (87, 105, 247)
+# A deeper take on Claude Code's blue, so it stands out on any background.
+# (87, 105, 247) is closer to the original but reads lighter.
+KOPI_BLUE = (52, 78, 240)
 
-# Outline drawn around the blue cursor so it stays visible on dark and light backgrounds.
+# kopi-kopi cursor size relative to your normal cursor. Bigger = easier to notice.
+CURSOR_SCALE = 1.5
+
+# Outline between the blue and the dark edge, so it stays visible on any background.
 OUTLINE = (255, 255, 255)
 
 # If the pointer moves more than this many pixels between press and release,

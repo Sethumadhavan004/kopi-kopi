@@ -11,6 +11,10 @@ three-finger tap  →  pasted where your pointer is, cursor back to normal
 ```
 
 Three-finger tap again before copying cancels.
+
+The cursor tells you where you are: **blue arrow** = on, **ring badge** = start placed,
+**✓ badge** = copied and ready to paste. If nothing was selected, you go back to the plain blue arrow
+and the old clipboard is never pasted.
 Everything goes through the normal clipboard, so **Win+V** clipboard history keeps working.
 
 ## Setup (Windows)
@@ -35,7 +39,7 @@ macOS and Linux: coming next. The core logic is already OS-independent.
 | `kopi_kopi/core.py` | The state machine: OFF → ARMED → HAS_START → COPIED → OFF. Pure logic, unit tested. |
 | `kopi_kopi/platforms/windows.py` | Low-level mouse hook, blue system cursor, clipboard change counter. |
 | `kopi_kopi/app.py` | Glue: hook thread decides instantly, worker thread does the slow work. |
-| `kopi_kopi/cursor_art.py` | Draws the blue cursor from ASCII art and writes a `.cur` file. |
+| `kopi_kopi/cursor_art.py` | Draws the cursors from shapes using signed distances (smooth edges, any size) and writes `.cur` files. |
 | `kopi_kopi/config.py` | Colour, drag threshold and a few other knobs. |
 
 Ideas behind it:
@@ -46,6 +50,8 @@ Ideas behind it:
 - **Drags aren't touched at all.** The app selects as usual, and kopi-kopi copies when you let go.
   If the app already copied on its own (Claude Code does), kopi-kopi skips Ctrl+C, because in a terminal
   Ctrl+C with nothing selected means "stop the program".
+- **Copies are verified.** Windows counts every clipboard change; if the count didn't move after Ctrl+C,
+  nothing was copied, so kopi-kopi lets you retry instead of pasting whatever was there before.
 - **Our own synthetic clicks are ignored** by the hook: kopi-kopi stamps them with a tag ("KOPI") and skips
   tagged events. Windows' generic "injected" flag isn't enough, because touchpad drivers inject events too,
   including the three-finger-tap middle click.

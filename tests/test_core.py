@@ -15,9 +15,9 @@ def test_left_clicks_pass_through_when_off():
 def test_trigger_turns_on_and_is_swallowed():
     k = make()
     r = k.trigger_down()
-    assert r.suppress and r.actions == [Action.CURSOR_ON]
+    assert r.suppress and r.actions == []
     assert k.trigger_up().suppress
-    assert k.state == State.ARMED
+    assert k.state == State.ARMED and k.look == "armed"
 
 
 def test_tap_start_then_tap_end_copies_with_shift_click():
@@ -57,8 +57,8 @@ def test_trigger_after_copy_pastes_and_turns_off():
     k.left_down(0, 0)
     k.left_up(100, 0)
     r = k.trigger_down()
-    assert r.suppress and r.actions == [Action.PASTE, Action.CURSOR_OFF]
-    assert k.state == State.OFF
+    assert r.suppress and r.actions == [Action.PASTE]
+    assert k.state == State.OFF and k.look is None
 
 
 def test_clicks_after_copy_pass_through_so_you_can_focus_the_target():
@@ -79,7 +79,7 @@ def test_trigger_cancels_while_selecting():
             k.left_down(1, 1)
             k.left_up(1, 1)
         r = k.trigger_down()
-        assert r.actions == [Action.CURSOR_OFF]
+        assert r.actions == []
         assert k.state == State.OFF
 
 
@@ -103,3 +103,40 @@ def test_press_that_started_before_turning_on_is_ignored():
     r = k.left_up(500, 500)
     assert not r.suppress and r.actions == []
     assert k.state == State.ARMED
+
+
+def test_cursor_look_follows_each_step():
+    k = make()
+    looks = [k.look]
+    k.trigger_down()
+    looks.append(k.look)
+    k.left_down(1, 1)
+    k.left_up(1, 1)
+    looks.append(k.look)
+    k.left_down(90, 90)
+    k.left_up(90, 90)
+    looks.append(k.look)
+    assert looks == [None, "armed", "start", "copied"]
+
+
+def test_failed_copy_goes_back_to_armed_so_you_can_retry():
+    k = make()
+    k.trigger_down()
+    k.left_down(0, 0)
+    k.left_up(100, 0)
+    k.copy_failed()
+    assert k.state == State.ARMED
+    # a fresh drag works as usual
+    k.left_down(0, 0)
+    k.left_up(100, 0)
+    assert k.state == State.COPIED
+
+
+def test_late_copy_failure_after_paste_trigger_changes_nothing():
+    k = make()
+    k.trigger_down()
+    k.left_down(0, 0)
+    k.left_up(100, 0)
+    k.trigger_down()  # paste requested before the copy check finished
+    k.copy_failed()
+    assert k.state == State.OFF

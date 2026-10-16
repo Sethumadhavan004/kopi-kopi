@@ -118,25 +118,40 @@ def click(shift=False):
     user32.SendInput(len(inputs), batch, ctypes.sizeof(_INPUT))
 
 
-def _cursor_file(name, art, hotspot, size):
-    pixels, hs = render(art, hotspot, config.KOPI_BLUE, config.OUTLINE, size)
-    path = os.path.join(tempfile.gettempdir(), f"kopi-kopi-{name}-{size}.cur")
+def _cursor_size():
+    return round((user32.GetSystemMetrics(SM_CXCURSOR) or 32) * config.CURSOR_SCALE)
+
+
+def _cursor_file(look, name, art, hotspot, size):
+    pixels, hs = render(art, hotspot, config.KOPI_BLUE, config.OUTLINE, size,
+                        badge=None if look == "armed" else look)
+    path = os.path.join(tempfile.gettempdir(), f"kopi-kopi-{look}-{name}-{size}.cur")
     with open(path, "wb") as f:
         f.write(to_cur_bytes(pixels, hs))
     return path
 
 
-_files = {}
+_files = {}  # (look, size) -> (arrow .cur path, I-beam .cur path)
 
 
-def cursor_on():
-    size = user32.GetSystemMetrics(SM_CXCURSOR) or 32
-    if size not in _files:
-        _files[size] = (
-            _cursor_file("arrow", ARROW, ARROW_HOTSPOT, size),
-            _cursor_file("ibeam", IBEAM, IBEAM_HOTSPOT, size),
-        )
-    arrow, ibeam = _files[size]
+def prepare_cursors():
+    """Draw every cursor up front (about a second), so the first tap isn't laggy."""
+    size = _cursor_size()
+    for look in ("armed", "start", "copied"):
+        if (look, size) not in _files:
+            _files[look, size] = (
+                _cursor_file(look, "arrow", ARROW, ARROW_HOTSPOT, size),
+                _cursor_file(look, "ibeam", IBEAM, IBEAM_HOTSPOT, size),
+            )
+
+
+def set_cursor(look):
+    """Show the kopi-kopi cursor for `look` ("armed", "start", "copied"), or None for normal."""
+    if look is None:
+        cursor_off()
+        return
+    prepare_cursors()
+    arrow, ibeam = _files[look, _cursor_size()]
     # SetSystemCursor takes ownership of (and later destroys) the handle,
     # so each system cursor slot needs its own freshly loaded copy.
     for path, slot in ((arrow, OCR_NORMAL), (ibeam, OCR_IBEAM), (arrow, OCR_HAND)):
