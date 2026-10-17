@@ -18,5 +18,5 @@ def load():
         from . import windows
         return windows
     raise SystemExit(
-        f"kopi-kopi doesn't support {sys.platform} yet (Windows first, macOS and Linux next)."
+        f"kopi-kopi runs on Windows for now ({sys.platform} found). macOS and Linux are planned for v1.1."
     )

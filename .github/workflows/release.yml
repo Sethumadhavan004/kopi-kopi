@@ -1,0 +1,42 @@
+name: Release
+
+# Push a tag like v1.0.0 to build kopi-kopi.exe and attach it to a GitHub Release.
+# Running it by hand (Actions tab -> Release -> Run workflow) builds the .exe as a
+# downloadable artifact without publishing a release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows-exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install . pyinstaller
+      - name: Build kopi-kopi.exe
+        run: >
+          pyinstaller --onefile --name kopi-kopi
+          --hidden-import pynput.keyboard._win32
+          --hidden-import pynput.mouse._win32
+          packaging/kopi-kopi.py
+      - name: Check the .exe starts
+        run: |
+          dist/kopi-kopi.exe --version
+          dist/kopi-kopi.exe --reset-cursor
+      - uses: actions/upload-artifact@v4
+        with:
+          name: kopi-kopi-windows
+          path: dist/kopi-kopi.exe
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/kopi-kopi.exe
+          generate_release_notes: true

@@ -9,8 +9,7 @@ from pathlib import Path
 
 from pynput import keyboard, mouse
 
-from .. import config
-from .. import cursor_art
+from .. import config, cursor_art
 from ..cursor_art import ARROW, ARROW_HOTSPOT, IBEAM, IBEAM_HOTSPOT, build_ani
 
 user32 = ctypes.WinDLL("user32", use_last_error=True)
@@ -181,3 +180,18 @@ def cursor_off():
 
 def clipboard_seq():
     return user32.GetClipboardSequenceNumber()
+
+
+# Closing the console window ends Python without running `atexit`, which would
+# leave the kopi-kopi cursor on screen. Windows tells console programs about
+# Ctrl+C, closing, logoff and shutdown through this handler, so restore it here.
+_HandlerRoutine = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.DWORD)
+
+
+@_HandlerRoutine
+def _on_console_event(event):
+    cursor_off()
+    return False  # not handled: let Windows (and Python's Ctrl+C handling) carry on
+
+
+ctypes.windll.kernel32.SetConsoleCtrlHandler(_on_console_event, True)

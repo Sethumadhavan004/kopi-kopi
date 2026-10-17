@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "kopi-kopi"
+dynamic = ["version"]
+description = "Copy and paste with taps: three-finger tap, tap start, tap end, three-finger tap to paste."
+readme = "README.md"
+license = { file = "LICENSE" }
+authors = [{ name = "Sethumadhavan N" }]
+requires-python = ">=3.9"
+dependencies = ["pynput>=1.8.1"]
+keywords = ["clipboard", "copy-paste", "touchpad", "trackpad", "productivity", "windows"]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Topic :: Utilities",
+]
+
+[project.optional-dependencies]
+dev = ["pytest", "ruff==0.16.8", "pillow"]
+
+[project.scripts]
+kopi-kopi = "kopi_kopi.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/sethumadhavan004/kopi-kopi"
+
+[tool.setuptools.dynamic]
+version = { attr = "kopi_kopi.__version__" }
+
+[tool.setuptools.packages.find]
+include = ["kopi_kopi*"]
+
+[tool.ruff]
+line-length = 110
+target-version = "py39"
+
+[tool.ruff.lint]
+# pycodestyle errors and warnings, pyflakes, import order
+select = ["E", "W", "F", "I"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

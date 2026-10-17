@@ -2,7 +2,13 @@ import struct
 
 from kopi_kopi import config
 from kopi_kopi.cursor_art import (
-    ARROW, ARROW_HOTSPOT, FRAME_JIFFIES, FRAMES, build_ani, draw_frame, draw_pointer,
+    ARROW,
+    ARROW_HOTSPOT,
+    FRAME_JIFFIES,
+    FRAMES,
+    build_ani,
+    draw_frame,
+    draw_pointer,
 )
 
 C = config.CURSOR_COLORS
