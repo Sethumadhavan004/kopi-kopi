@@ -7,6 +7,7 @@ Each backend provides the same few things, so app.py never needs to know the OS:
   set_cursor(look)        show the cursor for a look ("armed", "selecting", "copied") or None
   cursor_off()            restore the normal cursor
   clipboard_seq()         a number that changes whenever the clipboard changes
+  self_test()             check this machine can run kopi-kopi (used by CI)
   MODIFIER                the copy/paste key (Ctrl on Windows/Linux, Cmd on macOS)
 """
 

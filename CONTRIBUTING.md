@@ -5,7 +5,7 @@ Thanks for wanting to help. kopi-kopi is small on purpose, so the best contribut
 ## Set up
 
 ```
-git clone https://github.com/sethumadhavan004/kopi-kopi
+git clone https://github.com/Sethumadhavan004/kopi-kopi
 cd kopi-kopi
 pip install -e ".[dev]"
 ```
@@ -40,6 +40,8 @@ Start with [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). In short:
 
 ## Making a release (maintainers)
 
-1. Update the version in `kopi_kopi/__init__.py` and add an entry to `CHANGELOG.md`.
-2. Commit, then tag: `git tag v1.0.0 && git push origin v1.0.0`.
-3. GitHub Actions builds `kopi-kopi.exe` and attaches it to a new release.
+1. Update the version in `kopi_kopi/__init__.py` and add an entry to `CHANGELOG.md`, through a PR.
+2. Try the build first: Actions → **Release** → *Run workflow* on `main`, then download and run the artifacts.
+3. Tag `main`: `git tag v1.0.0 && git push origin v1.0.0`. The tag must match the version, or the release stops.
+4. GitHub Actions tests the built app, creates the GitHub Release (Windows zip + Python package)
+   and publishes to PyPI.

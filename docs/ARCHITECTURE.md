@@ -146,7 +146,7 @@ in a folder named after a fingerprint of the art and colours, so changing either
 | `tests/test_core.py` | every state and arrow, including edge cases | any OS |
 | `tests/test_app.py` | the whole app against a fake Windows (clicks, keys, clipboard counter) | any OS |
 | `tests/test_cursor_art.py` | the `.ani` file structure, the seamless loop | any OS |
-| `tools/windows_smoke.py` | real Windows loads every cursor; `SendInput` structures have the right size | Windows (CI) |
+| `kopi-kopi --self-test` | real Windows loads every cursor; `SendInput` structures have the right size | Windows (CI, and on the built `.exe` before every release) |
 
 GitHub Actions (`.github/workflows/ci.yml`) runs all of this on Windows and Linux, with the oldest
 and newest supported Python, on every push.

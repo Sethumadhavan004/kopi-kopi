@@ -23,8 +23,12 @@ jobs:
         run: ruff check .
       - name: Unit tests
         run: python -m pytest -q
-      - name: Windows layer smoke test
+      - name: Windows self-test (draws and loads every cursor)
         if: runner.os == 'Windows'
         run: |
           pip install .
-          python tools/windows_smoke.py
+          kopi-kopi --self-test
+      - name: Package builds
+        run: |
+          pip install build
+          python -m build

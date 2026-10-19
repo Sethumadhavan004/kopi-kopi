@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "kopi-kopi"
 dynamic = ["version"]
-description = "Copy and paste with taps: three-finger tap, tap start, tap end, three-finger tap to paste."
+description = "Copy and paste with your trackpad or mouse: three-finger tap or wheel click, tap the start, tap the end, and paste."
 readme = "README.md"
 license = { file = "LICENSE" }
 authors = [{ name = "Sethumadhavan N" }]
 requires-python = ">=3.9"
 dependencies = ["pynput>=1.8.1"]
-keywords = ["clipboard", "copy-paste", "touchpad", "trackpad", "productivity", "windows"]
+keywords = ["clipboard", "copy-paste", "touchpad", "trackpad", "mouse", "productivity", "windows"]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: Win32 (MS Windows)",
@@ -29,7 +29,9 @@ dev = ["pytest", "ruff==0.16.8", "pillow"]
 kopi-kopi = "kopi_kopi.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/sethumadhavan004/kopi-kopi"
+Homepage = "https://github.com/Sethumadhavan004/kopi-kopi"
+Issues = "https://github.com/Sethumadhavan004/kopi-kopi/issues"
+Changelog = "https://github.com/Sethumadhavan004/kopi-kopi/blob/main/CHANGELOG.md"
 
 [tool.setuptools.dynamic]
 version = { attr = "kopi_kopi.__version__" }

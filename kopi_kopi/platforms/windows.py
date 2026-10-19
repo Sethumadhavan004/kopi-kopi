@@ -15,6 +15,7 @@ from ..cursor_art import ARROW, ARROW_HOTSPOT, IBEAM, IBEAM_HOTSPOT, build_ani
 user32 = ctypes.WinDLL("user32", use_last_error=True)
 user32.LoadCursorFromFileW.restype = wintypes.HANDLE
 user32.LoadCursorFromFileW.argtypes = [wintypes.LPCWSTR]
+user32.DestroyCursor.argtypes = [wintypes.HANDLE]
 user32.SetSystemCursor.argtypes = [wintypes.HANDLE, wintypes.DWORD]
 user32.SystemParametersInfoW.argtypes = [wintypes.UINT, wintypes.UINT,
                                          ctypes.c_void_p, wintypes.UINT]
@@ -181,6 +182,25 @@ def set_cursor(look):
 def cursor_off():
     # Reloads the user's normal cursor scheme from Windows settings.
     user32.SystemParametersInfoW(SPI_SETCURSORS, 0, None, 0)
+
+
+def self_test():
+    """Checks this machine can run kopi-kopi, without clicking or changing the cursor.
+
+    Draws every cursor, asks Windows to load each one, and checks the SendInput
+    structure has the size Windows expects. Run on every release build in CI.
+    """
+    prepare_cursors()
+    paths = [p for pair in _files.values() for p in pair]
+    for path in paths:
+        handle = user32.LoadCursorFromFileW(path)
+        if not handle:
+            raise RuntimeError(f"Windows could not load {path}")
+        user32.DestroyCursor(handle)
+    expected = 40 if ctypes.sizeof(ctypes.c_void_p) == 8 else 28
+    if ctypes.sizeof(_INPUT) != expected:
+        raise RuntimeError(f"SendInput structure is {ctypes.sizeof(_INPUT)} bytes, expected {expected}")
+    return f"{len(paths)} animated cursors load; SendInput structure is {expected} bytes"
 
 
 def clipboard_seq():

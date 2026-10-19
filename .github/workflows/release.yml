@@ -1,42 +1,109 @@
 name: Release
 
-# Push a tag like v1.0.0 to build kopi-kopi.exe and attach it to a GitHub Release.
-# Running it by hand (Actions tab -> Release -> Run workflow) builds the .exe as a
-# downloadable artifact without publishing a release.
+# Push a tag like v1.0.0 to build everything, publish to PyPI and create a GitHub Release.
+# Running it by hand (Actions tab -> Release -> Run workflow) only builds and tests,
+# leaving the results as downloadable artifacts, so you can try them before tagging.
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
-  windows-exe:
+  windows-app:
+    name: Windows app (.zip)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install . pyinstaller
-      - name: Build kopi-kopi.exe
+      - name: Install kopi-kopi and PyInstaller (bootloader compiled from source)
+        # PyInstaller's prebuilt launcher is shared by many programs, including some malware,
+        # so antivirus tools often flag it. Compiling our own copy avoids most false alarms.
+        env:
+          PYINSTALLER_COMPILE_BOOTLOADER: "1"
+        run: |
+          pip install . pillow
+          pip install pyinstaller==6.22.3 --no-binary pyinstaller
+      - name: Make the icon and version details
+        run: |
+          python packaging/make_icon.py packaging/kopi-kopi.ico
+          python packaging/version_info.py packaging/version_info.txt
+      - name: Build
+        # --onedir (a folder) instead of --onefile: one-file apps unpack themselves into a
+        # temp folder at every start, which is exactly what scanners treat as suspicious.
         run: >
-          pyinstaller --onefile --name kopi-kopi
+          pyinstaller --noconfirm --onedir --name kopi-kopi
+          --icon packaging/kopi-kopi.ico
+          --version-file packaging/version_info.txt
           --hidden-import pynput.keyboard._win32
           --hidden-import pynput.mouse._win32
           packaging/kopi-kopi.py
-      - name: Check the .exe starts
+      - name: Test the app we're about to ship
         run: |
-          dist/kopi-kopi.exe --version
-          dist/kopi-kopi.exe --reset-cursor
+          dist/kopi-kopi/kopi-kopi.exe --version
+          dist/kopi-kopi/kopi-kopi.exe --self-test
+      - name: Zip
+        shell: pwsh
+        run: Compress-Archive -Path dist/kopi-kopi -DestinationPath kopi-kopi-windows.zip
       - uses: actions/upload-artifact@v4
         with:
           name: kopi-kopi-windows
-          path: dist/kopi-kopi.exe
-      - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
+          path: kopi-kopi-windows.zip
+
+  python-package:
+    name: Python package (PyPI)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
-          files: dist/kopi-kopi.exe
+          python-version: "3.12"
+      - name: Check the tag matches the version in the code
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version=$(python -c "import kopi_kopi; print(kopi_kopi.__version__)")
+          test "${GITHUB_REF_NAME}" = "v${version}" || {
+            echo "Tag ${GITHUB_REF_NAME} does not match version ${version} in kopi_kopi/__init__.py"; exit 1; }
+      - run: pip install build
+      - run: python -m build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: python-package
+          path: dist/
+
+  publish-pypi:
+    name: Publish to PyPI
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [windows-app, python-package]
+    runs-on: ubuntu-latest
+    # "Trusted publishing": PyPI trusts this exact workflow, so no password or token is stored anywhere.
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: python-package
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    name: GitHub Release
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [windows-app, python-package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+          merge-multiple: true
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifacts/kopi-kopi-windows.zip
+            artifacts/*.whl
+            artifacts/*.tar.gz
           generate_release_notes: true
