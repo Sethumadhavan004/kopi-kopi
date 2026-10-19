@@ -1,0 +1,24 @@
+{
+  "name": "kopi-kopi-promo",
+  "private": true,
+  "scripts": {
+    "studio": "remotion studio src/index.ts",
+    "render:hikari": "remotion render src/index.ts Square-Hikari out/kopi-kopi-square-hikari.mp4 --codec=h264 --crf=18 && remotion render src/index.ts Wide-Hikari out/kopi-kopi-wide-hikari.mp4 --codec=h264 --crf=18",
+    "render:ankoku": "remotion render src/index.ts Square-Ankoku out/kopi-kopi-square-ankoku.mp4 --codec=h264 --crf=18 && remotion render src/index.ts Wide-Ankoku out/kopi-kopi-wide-ankoku.mp4 --codec=h264 --crf=18",
+    "render:demo": "remotion render src/index.ts DemoGif-Hikari out/demo-frames.mp4 --codec=h264 --crf=16",
+    "stills": "node scripts/stills.mjs",
+    "gif": "node scripts/gif.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.537",
+    "@remotion/google-fonts": "4.0.537",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "remotion": "4.0.537"
+  },
+  "devDependencies": {
+    "@types/react": "19.2.2",
+    "typescript": "5.9.3"
+  }
+}

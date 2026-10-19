@@ -10,3 +10,6 @@ dist/
 packaging/kopi-kopi.ico
 packaging/version_info.txt
 kopi-kopi-windows.zip
+promo/node_modules/
+promo/out/
+promo/*.log
