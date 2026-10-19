@@ -9,7 +9,7 @@ from pathlib import Path
 
 from pynput import keyboard, mouse
 
-from .. import config, cursor_art
+from .. import __version__, config, cursor_art
 from ..cursor_art import ARROW, ARROW_HOTSPOT, IBEAM, IBEAM_HOTSPOT, build_ani
 
 user32 = ctypes.WinDLL("user32", use_last_error=True)
@@ -125,7 +125,12 @@ def _cursor_size():
 def _cache_dir():
     # The file names include a fingerprint of the art and colours, so editing
     # cursor_art.py or config.py makes fresh files instead of reusing stale ones.
-    art = Path(cursor_art.__file__).read_bytes()
+    try:
+        art = Path(cursor_art.__file__).read_bytes()
+    except OSError:
+        # Inside the packaged .exe the source files aren't on disk;
+        # the version number identifies the art instead.
+        art = __version__.encode()
     looks = repr((config.CURSOR_COLORS, config.STARS)).encode()
     tag = hashlib.sha1(art + looks).hexdigest()[:10]
     path = Path(tempfile.gettempdir()) / "kopi-kopi" / tag
