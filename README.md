@@ -1,37 +1,30 @@
 # kopi-kopi
 
-**Copy and paste with taps.** Three-finger tap, tap where it starts, tap where it ends.
-Three-finger tap again, and it's pasted.
+**Copy and paste with the three finger tap in your trackpad** Three finger tap, tap where it starts, tap where it ends, dragging works the same way, three finger at the destination, and its pasted there.
+
+**Copy and paste with the middle click / wheel click in your mouse** Wheel Click, tap where it starts, tap where it ends, dragging works the same way, wheel click at the destination, and its pasted there.
 
 ![kopi-kopi cursors: yellow star = ready, pink heartbeat = selecting, green = copied](docs/cursors.gif)
 
 ## Why I built this
 
-I copy a lot. Terminal logs into Claude Code, error messages, long pieces of documents.
+We all copy and paste a lot nowadays. And the copy-paste is by used because it is an improvement over the manual typing. But I felt, the actions that we have to do, to complete this process was something that i felt we can optimize. 
 
-My hand would be on the trackpad, but every copy pulled me back to the keyboard.
-Ctrl+C, Ctrl+V, back to the trackpad, again and again.
-And dragging across a long log on a trackpad is its own pain. The page scrolls away,
-the selection slips, and I start over.
+I have heard how core developers are so terminal oriented, they don't use much of the mouse / trackpad. Well I have to say sorry to them, cause this tool is fully mouse/trackpad oriented.
 
-I wanted something simple. Tap where it starts, tap where it ends, tap to paste.
-I couldn't find a tool that did just that, so I built one.
+With actions mapped as trigger, this tool, kopi-kopi, allows one to easily go into kopi mode, select the text and paste them, without the need to touch the keyboard. The trigger, three-finger tap in the trackpad and wheel click in mouse, brings in a ease to use this feature, that I am sure will become part of one's routine.
 
-I'm not someone who writes every line of code from memory. What I have is the picture of
-what I want and why. Claude has given me the ability to turn that picture into something that
-actually works, and kopi-kopi is one of those: a small problem from my own day,
-built in conversation with Claude Code, and tested on my own laptop until it felt right.
+This tool is being released as open source project, so many of them can use and get benefitted by this. No data is being collected and it is fully offline tool with no dependency.
 
-It's free and open source. It's small, it's useful, and since it touches your mouse and
-clipboard, you should be able to read every line of it.
+Even though it is mainly built as a personal tool for my particular pain point, I believe many others could be benefitted through this as well.
 
 ## How it works
 
 ```
-three-finger tap   →  the cursor turns into a small galaxy
+three-finger tap / wheel click   →  the cursor turns into a small galaxy
 tap the start      →  scroll as far as you like  →  tap the end    copied
    …or just drag over the text                                    copied
-three-finger tap   →  pasted where your pointer is
+three-finger tap / wheel click   →  pasted where your pointer is
 ```
 
 A revolving star tells you where you are:
